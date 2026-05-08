@@ -1,0 +1,19 @@
+services:
+  app:
+    image: "${IMAGE_REPO_PREFIX:-}ai-blog:${APP_VERSION:-local}"
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        APP_VERSION: "${APP_VERSION:-local}"
+        BUILD_COMMIT: "${BUILD_COMMIT:-unknown}"
+    container_name: ai-blog
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3001}:3000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-sy012345}@host.docker.internal:5432/ai_blog
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

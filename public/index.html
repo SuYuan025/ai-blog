@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>笔尖 — AI 博客生成器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+  <!-- 左栏：导航 -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <span class="brand-icon">&#10045;</span>
+      <button class="btn-new" id="btnNew" title="新建文章">+</button>
+    </div>
+
+    <div class="search-box">
+      <input type="text" class="search-input" id="searchInput" placeholder="搜索标题…">
+    </div>
+
+    <div class="article-nav" id="articleNav">
+      <ul class="article-list" id="articleList"></ul>
+    </div>
+
+    <button class="theme-toggle-btn" id="btnTheme" title="切换主题">&#9788;</button>
+  </nav>
+
+  <div class="nav-divider" id="navDivider"></div>
+
+  <!-- 中右栏：主工作区 -->
+  <div class="workspace" id="workspace">
+
+    <!-- 空白状态 -->
+    <div class="view-empty" id="viewEmpty">
+      <div class="empty-mark">&#10045;</div>
+      <h2>要写点什么？</h2>
+      <p>说一句话，AI 帮你起标题、写成一篇完整的博客。</p>
+      <button class="btn-primary" id="btnStart">开始创作 &rarr;</button>
+    </div>
+
+    <!-- 生成视图 -->
+    <div class="view-generate" id="viewGenerate" style="display:none">
+      <div class="generate-stage">
+        <textarea id="inputTopic" rows="1"
+          placeholder="你想写什么主题？说一句话就行…" autofocus></textarea>
+
+        <div class="generate-bottombar">
+          <div class="select-group" id="styleGroup">
+            <button class="chip" data-value="casual">轻松</button>
+            <button class="chip" data-value="formal">正式</button>
+            <button class="chip active" data-value="tech">技术</button>
+          </div>
+          <span class="bar-sep"></span>
+          <div class="select-group" id="wordGroup">
+            <button class="chip" data-value="short">短</button>
+            <button class="chip active" data-value="medium">中</button>
+            <button class="chip" data-value="long">长</button>
+          </div>
+          <span class="bar-spacer"></span>
+          <label class="search-toggle">
+            <input type="checkbox" id="webSearchToggle" checked>
+            <span class="search-toggle-pill">联网</span>
+          </label>
+          <button class="btn-primary btn-generate" id="btnGenerate">&#10045; 生成</button>
+        </div>
+
+        <div class="progress-area" id="progressArea" style="display:none">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-info">
+            <span class="progress-stage" id="progressStage"></span>
+            <span class="progress-pct" id="progressPct">0%</span>
+          </div>
+        </div>
+        <p class="generate-error" id="generateError" style="display:none"></p>
+      </div>
+    </div>
+
+    <!-- 编辑视图：中栏编辑 + 右栏预览 -->
+    <div class="view-editor" id="viewEditor" style="display:none">
+      <div class="editor-toolbar">
+        <input type="text" class="editor-title-input" id="editorTitle" placeholder="文章标题…">
+        <div class="editor-actions">
+          <button class="btn-save" id="btnSave">保存</button>
+          <button class="btn-ai-edit" id="btnAiEdit" disabled>AI 修改</button>
+          <button class="btn-delete" id="btnDelete">删除</button>
+        </div>
+      </div>
+      <div class="editor-panes">
+        <div class="pane pane-edit" id="paneEdit">
+          <div class="pane-header">编辑</div>
+          <textarea class="editor-textarea" id="editorTextarea" placeholder="Markdown…"></textarea>
+        </div>
+        <div class="pane-divider" id="paneDivider"></div>
+        <div class="pane pane-preview" id="panePreview">
+          <div class="pane-header">预览</div>
+          <div class="preview-content" id="previewContent"></div>
+        </div>
+      </div>
+      <div class="ai-edit-bar" id="aiEditBar" style="display:none">
+        <span class="ai-edit-hint">选中内容：</span>
+        <button class="chip ai-action" data-action="rewrite">重写</button>
+        <button class="chip ai-action" data-action="expand">扩写</button>
+        <button class="chip ai-action" data-action="shorten">缩写</button>
+        <button class="chip ai-action" data-action="polish">润色</button>
+        <div class="ai-edit-result" id="aiEditResult" style="display:none">
+          <div class="ai-result-content" id="aiResultContent"></div>
+          <div class="ai-result-actions">
+            <button class="btn-apply" id="btnApply">替换</button>
+            <button class="btn-cancel" id="btnCancel">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

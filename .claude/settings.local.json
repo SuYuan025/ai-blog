@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(psql --version)",
+      "Bash(pg_isready)",
+      "Bash(createdb ai_blog)",
+      "Bash(psql -d ai_blog -c \"SELECT 1;\")",
+      "Bash(npm init *)",
+      "Bash(psql -d ai_blog -c 'CREATE TABLE IF NOT EXISTS articles \\( *)",
+      "Bash(psql *)",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl *)",
+      "Read(//e/vscode/code/学习/**)",
+      "Read(//e/vscode/code/**)"
+    ]
+  }
+}

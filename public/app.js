@@ -1,0 +1,561 @@
+// ===== 笔尖 — 前端逻辑 =====
+
+const state = {
+  articles: [],
+  currentView: 'empty',
+  currentArticle: null,
+  selectedText: '',
+  searchQuery: '',
+};
+
+const $ = (sel) => document.querySelector(sel);
+
+const dom = {
+  viewEmpty: $('#viewEmpty'),
+  viewGenerate: $('#viewGenerate'),
+  viewEditor: $('#viewEditor'),
+  articleList: $('#articleList'),
+  searchInput: $('#searchInput'),
+  inputTopic: $('#inputTopic'),
+  webSearchToggle: $('#webSearchToggle'),
+  editorTitle: $('#editorTitle'),
+  editorTextarea: $('#editorTextarea'),
+  previewContent: $('#previewContent'),
+  toast: $('#toast'),
+  progressArea: $('#progressArea'),
+  progressFill: $('#progressFill'),
+  progressStage: $('#progressStage'),
+  progressPct: $('#progressPct'),
+  generateError: $('#generateError'),
+  aiEditBar: $('#aiEditBar'),
+  aiEditResult: $('#aiEditResult'),
+  aiResultContent: $('#aiResultContent'),
+  btnAiEdit: $('#btnAiEdit'),
+  btnNew: $('#btnNew'),
+  btnStart: $('#btnStart'),
+  btnGenerate: $('#btnGenerate'),
+  btnDelete: $('#btnDelete'),
+  btnSave: $('#btnSave'),
+  btnApply: $('#btnApply'),
+  btnCancel: $('#btnCancel'),
+  btnTheme: $('#btnTheme'),
+  paneDivider: $('#paneDivider'),
+  paneEdit: $('#paneEdit'),
+  panePreview: $('#panePreview'),
+};
+
+// ===== 初始化 =====
+function init() {
+  initTheme();
+  initPaneDivider();
+  initNavDivider();
+  loadArticles();
+  setupEventListeners();
+  switchView('empty');
+}
+
+// ===== 主题切换 =====
+function initTheme() {
+  if (localStorage.getItem('theme') === 'light') setLightTheme();
+}
+
+function toggleTheme() {
+  if (document.documentElement.dataset.theme === 'light') {
+    setDarkTheme();
+  } else {
+    setLightTheme();
+  }
+}
+
+function setLightTheme() {
+  document.documentElement.dataset.theme = 'light';
+  dom.btnTheme.textContent = '☾';
+  dom.btnTheme.title = '切换深色模式';
+  localStorage.setItem('theme', 'light');
+}
+
+function setDarkTheme() {
+  delete document.documentElement.dataset.theme;
+  dom.btnTheme.textContent = '☀';
+  dom.btnTheme.title = '切换浅色模式';
+  localStorage.setItem('theme', 'dark');
+}
+
+// ===== 分栏拖拽 =====
+function initPaneDivider() {
+  let dragging = false;
+  const divider = dom.paneDivider;
+  const panes = document.querySelector('.editor-panes');
+
+  divider.addEventListener('mousedown', (e) => {
+    dragging = true;
+    divider.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = panes.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pct = Math.max(25, Math.min(75, (x / rect.width) * 100));
+    dom.paneEdit.style.flex = `${pct}%`;
+    dom.panePreview.style.flex = `${100 - pct}%`;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+}
+
+// ===== 导航栏拖拽 =====
+function initNavDivider() {
+  let dragging = false;
+  const divider = $('#navDivider');
+  const sidebar = $('#sidebar');
+
+  divider.addEventListener('mousedown', (e) => {
+    dragging = true;
+    divider.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const w = Math.max(140, Math.min(window.innerWidth * 0.35, e.clientX));
+    sidebar.style.width = w + 'px';
+    sidebar.style.minWidth = w + 'px';
+    document.documentElement.style.setProperty('--nav-width', w + 'px');
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+}
+
+// ===== 视图切换 =====
+function switchView(view) {
+  state.currentView = view;
+  dom.viewEmpty.style.display = view === 'empty' ? '' : 'none';
+  dom.viewGenerate.style.display = view === 'generate' ? '' : 'none';
+  dom.viewEditor.style.display = view === 'editor' ? '' : 'none';
+  dom.aiEditBar.style.display = 'none';
+}
+
+// ===== 文章列表 =====
+async function loadArticles() {
+  try {
+    const url = state.searchQuery
+      ? `/api/articles?search=${encodeURIComponent(state.searchQuery)}`
+      : '/api/articles';
+    const res = await fetch(url);
+    state.articles = await res.json();
+    renderArticleList();
+  } catch (e) {
+    console.error('加载文章列表失败', e);
+  }
+}
+
+function renderArticleList() {
+  if (state.articles.length === 0) {
+    dom.articleList.innerHTML = '<li class="article-empty">暂无文章</li>';
+    return;
+  }
+  dom.articleList.innerHTML = state.articles.map(a => {
+    const cls = state.currentArticle?.id === a.id ? 'active' : '';
+    return `<li data-id="${a.id}" class="${cls}">
+      <div class="article-item-title">${escHtml(a.title)}</div>
+      <div class="article-item-meta">
+        <span>${formatDate(a.created_at)}</span>
+        ${a.tags?.length ? a.tags.slice(0, 3).map(t => '<span class="item-tag">' + escHtml(t) + '</span>').join('') : ''}
+      </div>
+    </li>`;
+  }).join('');
+
+  dom.articleList.querySelectorAll('li[data-id]').forEach(li => {
+    li.addEventListener('click', () => openArticle(Number(li.dataset.id)));
+  });
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const diff = Date.now() - new Date(d).getTime();
+  if (diff < 86400000) return '今天';
+  if (diff < 172800000) return '昨天';
+  return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+}
+
+function escHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// ===== 打开文章 =====
+async function openArticle(id) {
+  try {
+    const res = await fetch(`/api/articles/${id}`);
+    const article = await res.json();
+    if (!article) return;
+    state.currentArticle = article;
+    dom.editorTitle.value = article.title;
+    dom.editorTextarea.value = article.content;
+    updatePreview();
+    switchView('editor');
+    renderArticleList();
+  } catch (e) {
+    toast('加载文章失败', true);
+  }
+}
+
+// ===== 新建 =====
+function startNew() {
+  state.currentArticle = null;
+  dom.inputTopic.value = '';
+  dom.generateError.style.display = 'none';
+  dom.progressArea.style.display = 'none';
+  resetChipGroups();
+  switchView('generate');
+  setTimeout(() => dom.inputTopic.focus(), 100);
+}
+
+// ===== AI 生成 (SSE) =====
+let progressTimer = null;
+const PROGRESS_STEPS = [
+  { pct: 6,  msg: '分析主题…',     delay: 800 },
+  { pct: 14, msg: '构思大纲…',     delay: 1500 },
+  { pct: 25, msg: '撰写开头…',     delay: 2500 },
+  { pct: 40, msg: '正文撰写中…',    delay: 3500 },
+  { pct: 56, msg: '深入展开中…',    delay: 3800 },
+  { pct: 72, msg: '补充细节…',     delay: 3500 },
+  { pct: 84, msg: '润色优化…',     delay: 2500 },
+  { pct: 92, msg: '收尾整理…',     delay: 1800 },
+];
+
+async function generateArticle() {
+  const topic = dom.inputTopic.value.trim();
+  if (!topic) { toast('请输入文章主题'); return; }
+
+  const style = getActiveChip('styleGroup');
+  const wordCount = getActiveChip('wordGroup');
+  const webSearch = dom.webSearchToggle.checked;
+
+  dom.generateError.style.display = 'none';
+  dom.progressArea.style.display = '';
+  setGenerating(true);
+
+  // 启动渐慢进度动画
+  let stepIdx = 0;
+  setProgress(2, '准备中…');
+  function nextStep() {
+    if (stepIdx < PROGRESS_STEPS.length) {
+      const s = PROGRESS_STEPS[stepIdx];
+      setProgress(s.pct, s.msg);
+      stepIdx++;
+      progressTimer = setTimeout(nextStep, s.delay);
+    }
+  }
+  progressTimer = setTimeout(nextStep, PROGRESS_STEPS[0].delay);
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, style, wordCount, webSearch }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || '生成失败');
+    }
+
+    // SSE 读取
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          handleSSE(eventType, JSON.parse(line.slice(6)));
+        }
+      }
+    }
+
+    setGenerating(false);
+  } catch (e) {
+    clearTimeout(progressTimer);
+    dom.generateError.textContent = e.message;
+    dom.generateError.style.display = '';
+    dom.progressArea.style.display = 'none';
+    setGenerating(false);
+  }
+}
+
+function setGenerating(active) {
+  dom.btnGenerate.disabled = active;
+  dom.btnGenerate.innerHTML = active ? '<span class="btn-spinner"></span> 生成中…' : '&#10045; 生成';
+  dom.inputTopic.disabled = active;
+  document.querySelectorAll('.select-group .chip').forEach(c => {
+    c.style.pointerEvents = active ? 'none' : '';
+    c.style.opacity = active ? '0.5' : '';
+  });
+}
+
+function handleSSE(type, data) {
+  switch (type) {
+    case 'progress':
+      // 保证进度不倒退
+      break;
+    case 'done':
+      clearTimeout(progressTimer);
+      setProgress(100, '完成！');
+      setTimeout(() => {
+        dom.progressArea.style.display = 'none';
+        saveGeneratedArticle(data);
+      }, 350);
+      break;
+    case 'error':
+      clearTimeout(progressTimer);
+      dom.generateError.textContent = data.message;
+      dom.generateError.style.display = '';
+      dom.progressArea.style.display = 'none';
+      setGenerating(false);
+      break;
+  }
+}
+
+function setProgress(pct, message) {
+  dom.progressFill.style.width = pct + '%';
+  dom.progressPct.textContent = pct + '%';
+  dom.progressStage.textContent = message;
+}
+
+async function saveGeneratedArticle(data) {
+  try {
+    const saveRes = await fetch('/api/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const saved = await saveRes.json();
+
+    state.currentArticle = saved;
+    dom.editorTitle.value = saved.title;
+    dom.editorTextarea.value = saved.content;
+    updatePreview();
+    switchView('editor');
+    await loadArticles();
+
+    toast('文章已生成并保存');
+  } catch (e) {
+    toast('保存失败', true);
+  }
+}
+
+function getActiveChip(groupId) {
+  const active = document.querySelector(`#${groupId} .chip.active`);
+  return active ? active.dataset.value : 'medium';
+}
+
+function resetChipGroups() {
+  ['styleGroup', 'wordGroup'].forEach(id => {
+    const chips = document.querySelectorAll(`#${id} .chip`);
+    chips.forEach(c => c.classList.remove('active'));
+    chips[1]?.classList.add('active');
+  });
+}
+
+// ===== 编辑功能 =====
+function updatePreview() {
+  if (typeof marked !== 'undefined') {
+    dom.previewContent.innerHTML = marked.parse(dom.editorTextarea.value || '');
+  } else {
+    dom.previewContent.textContent = dom.editorTextarea.value;
+  }
+}
+
+// ===== 保存文章 =====
+async function saveArticle() {
+  if (!state.currentArticle?.id) return;
+  try {
+    await fetch(`/api/articles/${state.currentArticle.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: dom.editorTitle.value,
+        content: dom.editorTextarea.value,
+        tags: state.currentArticle.tags,
+      }),
+    });
+    state.currentArticle.title = dom.editorTitle.value;
+    state.currentArticle.content = dom.editorTextarea.value;
+    await loadArticles();
+    toast('已保存');
+  } catch (e) {
+    toast('保存失败', true);
+  }
+}
+
+// ===== 删除文章 =====
+async function deleteArticle() {
+  if (!state.currentArticle?.id) return;
+  if (!confirm('确定删除这篇文章？')) return;
+  try {
+    await fetch(`/api/articles/${state.currentArticle.id}`, { method: 'DELETE' });
+    state.currentArticle = null;
+    await loadArticles();
+
+    switchView('empty');
+    toast('已删除');
+  } catch (e) {
+    toast('删除失败', true);
+  }
+}
+
+// ===== AI 辅助编辑 =====
+function onTextSelect() {
+  const ta = dom.editorTextarea;
+  const selected = ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+  if (selected.length > 20) {
+    state.selectedText = selected;
+    dom.btnAiEdit.disabled = false;
+    dom.aiEditBar.style.display = '';
+  } else {
+    state.selectedText = '';
+    dom.btnAiEdit.disabled = true;
+    dom.aiEditBar.style.display = 'none';
+    dom.aiEditResult.style.display = 'none';
+  }
+}
+
+async function aiEdit(action) {
+  if (!state.selectedText) return;
+  dom.aiEditResult.style.display = '';
+  dom.aiResultContent.textContent = 'AI 处理中...';
+  try {
+    const res = await fetch('/api/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: state.selectedText, action }),
+    });
+    const data = await res.json();
+    dom.aiResultContent.textContent = data.result;
+  } catch (e) {
+    dom.aiResultContent.textContent = '处理失败: ' + e.message;
+  }
+}
+
+function applyAiEdit() {
+  const result = dom.aiResultContent.textContent;
+  if (!result || result.startsWith('AI 处理中') || result.startsWith('处理失败')) return;
+  const ta = dom.editorTextarea;
+  ta.value = ta.value.substring(0, ta.selectionStart) + result + ta.value.substring(ta.selectionEnd);
+  dom.aiEditResult.style.display = 'none';
+  dom.aiEditBar.style.display = 'none';
+  state.selectedText = '';
+  dom.btnAiEdit.disabled = true;
+  updatePreview();
+}
+
+function cancelAiEdit() {
+  dom.aiEditResult.style.display = 'none';
+  dom.aiEditBar.style.display = 'none';
+  state.selectedText = '';
+  dom.btnAiEdit.disabled = true;
+}
+
+// ===== Toast =====
+function toast(msg, isError) {
+  dom.toast.textContent = msg;
+  dom.toast.style.color = isError ? '#d9756a' : '';
+  dom.toast.classList.add('show');
+  clearTimeout(dom.toast._timeout);
+  dom.toast._timeout = setTimeout(() => {
+    dom.toast.classList.remove('show');
+    dom.toast.style.color = '';
+  }, 2500);
+}
+
+// ===== 事件绑定 =====
+function setupEventListeners() {
+  dom.btnNew.addEventListener('click', startNew);
+  dom.btnStart.addEventListener('click', startNew);
+  dom.btnGenerate.addEventListener('click', generateArticle);
+  dom.btnDelete.addEventListener('click', deleteArticle);
+  dom.btnSave.addEventListener('click', saveArticle);
+  dom.btnApply.addEventListener('click', applyAiEdit);
+  dom.btnCancel.addEventListener('click', cancelAiEdit);
+  dom.btnTheme.addEventListener('click', toggleTheme);
+
+  document.querySelectorAll('.ai-action').forEach(btn => {
+    btn.addEventListener('click', () => aiEdit(btn.dataset.action));
+  });
+
+  document.querySelectorAll('.select-group').forEach(group => {
+    group.addEventListener('click', (e) => {
+      if (e.target.classList.contains('chip')) {
+        group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        e.target.classList.add('active');
+      }
+    });
+  });
+
+  dom.editorTextarea.addEventListener('input', updatePreview);
+  dom.editorTextarea.addEventListener('mouseup', onTextSelect);
+  dom.editorTextarea.addEventListener('keyup', (e) => {
+    if (e.shiftKey || e.key.includes('Arrow')) onTextSelect();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      if (state.currentView === 'editor') saveArticle();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+      e.preventDefault();
+      startNew();
+    }
+    if (e.key === 'Delete' && e.ctrlKey && state.currentView === 'editor') {
+      e.preventDefault();
+      deleteArticle();
+    }
+  });
+
+  // 搜索标题
+  let searchTimer;
+  dom.searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state.searchQuery = dom.searchInput.value.trim();
+      loadArticles();
+    }, 300);
+  });
+
+  dom.inputTopic.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') generateArticle();
+  });
+}
+
+// ===== 启动 =====
+init();
