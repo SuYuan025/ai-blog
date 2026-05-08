@@ -13,7 +13,9 @@ services:
       - "${APP_PORT:-3001}:3000"
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-sy012345}@host.docker.internal:5432/ai_blog
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    networks:
+      - grtblog-internal
+
+networks:
+  grtblog-internal:
+    external: true
