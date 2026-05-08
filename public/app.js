@@ -36,6 +36,7 @@ const dom = {
   btnGenerate: $('#btnGenerate'),
   btnDelete: $('#btnDelete'),
   btnSave: $('#btnSave'),
+  btnPublish: $('#btnPublish'),
   btnApply: $('#btnApply'),
   btnCancel: $('#btnCancel'),
   btnTheme: $('#btnTheme'),
@@ -211,6 +212,7 @@ async function openArticle(id) {
     state.currentArticle = article;
     dom.editorTitle.value = article.title;
     dom.editorTextarea.value = article.content;
+    updatePublishButton(article);
     updatePreview();
     switchView('editor');
     renderArticleList();
@@ -363,6 +365,7 @@ async function saveGeneratedArticle(data) {
     state.currentArticle = saved;
     dom.editorTitle.value = saved.title;
     dom.editorTextarea.value = saved.content;
+    updatePublishButton(saved);
     updatePreview();
     switchView('editor');
     await loadArticles();
@@ -414,6 +417,42 @@ async function saveArticle() {
     toast('已保存');
   } catch (e) {
     toast('保存失败', true);
+  }
+}
+
+// ===== 发布文章到 grtblog =====
+function updatePublishButton(article) {
+  if (article?.grtblog_id) {
+    dom.btnPublish.textContent = '已发布';
+    dom.btnPublish.classList.add('published');
+    dom.btnPublish.title = '点击更新发布';
+  } else {
+    dom.btnPublish.textContent = '发布';
+    dom.btnPublish.classList.remove('published');
+    dom.btnPublish.title = '发布到主站';
+  }
+}
+
+async function publishArticle() {
+  if (!state.currentArticle?.id) return;
+  const btn = dom.btnPublish;
+  btn.textContent = '发布中…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/articles/${state.currentArticle.id}/publish`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '发布失败');
+
+    state.currentArticle.grtblog_id = data.grtblogId;
+    updatePublishButton(state.currentArticle);
+    await loadArticles();
+    toast(data.url ? `已发布: ${data.url}` : '已发布');
+  } catch (e) {
+    toast(e.message, true);
+    updatePublishButton(state.currentArticle);
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -504,6 +543,7 @@ function setupEventListeners() {
   dom.btnGenerate.addEventListener('click', generateArticle);
   dom.btnDelete.addEventListener('click', deleteArticle);
   dom.btnSave.addEventListener('click', saveArticle);
+  dom.btnPublish.addEventListener('click', publishArticle);
   dom.btnApply.addEventListener('click', applyAiEdit);
   dom.btnCancel.addEventListener('click', cancelAiEdit);
   dom.btnTheme.addEventListener('click', toggleTheme);

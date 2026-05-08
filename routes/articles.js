@@ -65,4 +65,64 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// 发布文章到 grtblog
+router.post('/:id/publish', async (req, res) => {
+  try {
+    const article = await db.getArticle(req.params.id);
+    if (!article) return res.status(404).json({ error: '文章不存在' });
+
+    const apiUrl = process.env.GRTBLOG_API_URL || 'http://grtblog-server:8080/api/v2';
+    const token = process.env.GRTBLOG_TOKEN;
+    if (!token) return res.status(500).json({ error: '未配置 GRTBLOG_TOKEN' });
+
+    const shortUrl = article.short_url || `ai-blog-${article.id}`;
+
+    const body = {
+      title: article.title,
+      content: article.content,
+      shortUrl,
+      isPublished: true,
+      isOriginal: true,
+    };
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+
+    let resp;
+    if (article.grtblog_id) {
+      // 已发布过 → 更新
+      resp = await fetch(`${apiUrl}/articles/${article.grtblog_id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(body),
+      });
+    } else {
+      // 首次发布 → 创建
+      resp = await fetch(`${apiUrl}/articles`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+    }
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      return res.status(resp.status).json({ error: `grtblog 返回错误: ${err}` });
+    }
+
+    const data = await resp.json();
+    const grtblogId = data.data?.id;
+    const grtblogShortUrl = data.data?.shortUrl;
+    if (grtblogId) {
+      await db.setGrtblogInfo(article.id, grtblogId, grtblogShortUrl || shortUrl);
+    }
+
+    res.json({ ok: true, grtblogId, url: `https://zhuxu.cc/articles/${grtblogShortUrl || shortUrl}` });
+  } catch (e) {
+    res.status(500).json({ error: `发布失败: ${e.message}` });
+  }
+});
+
 module.exports = router;

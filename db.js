@@ -16,7 +16,9 @@ async function initDB() {
       word_count  VARCHAR(20),
       created_at  TIMESTAMPTZ DEFAULT NOW(),
       updated_at  TIMESTAMPTZ DEFAULT NOW(),
-      user_id     VARCHAR(100)
+      user_id     VARCHAR(100),
+      grtblog_id  INTEGER,
+      short_url   VARCHAR(200)
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_articles_tags ON articles USING GIN (tags)`);
@@ -75,4 +77,9 @@ async function getAllTags() {
   return result.rows.map(r => r.tag);
 }
 
-module.exports = { initDB, createArticle, updateArticle, listArticles, getArticle, deleteArticle, getAllTags };
+// 记录发布到 grtblog 的文章 ID 和 shortUrl
+async function setGrtblogInfo(id, grtblogId, shortUrl) {
+  await pool.query('UPDATE articles SET grtblog_id = $2, short_url = $3 WHERE id = $1', [id, grtblogId, shortUrl]);
+}
+
+module.exports = { initDB, createArticle, updateArticle, listArticles, getArticle, deleteArticle, getAllTags, setGrtblogInfo };

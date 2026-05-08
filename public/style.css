@@ -316,6 +316,14 @@ body {
 .btn-save { background: var(--accent); color: var(--bg-root); }
 .btn-save:hover { background: var(--accent-hover); }
 
+.btn-publish {
+  background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary);
+}
+.btn-publish:hover { border-color: var(--accent); color: var(--accent); }
+.btn-publish.published { border-color: #5a9e6f; color: #5a9e6f; }
+.btn-publish.published:hover { border-color: #6dbb83; color: #6dbb83; }
+.btn-publish:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .btn-ai-edit {
   background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary);
 }
