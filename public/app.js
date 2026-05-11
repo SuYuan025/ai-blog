@@ -685,5 +685,38 @@ function setupEventListeners() {
   });
 }
 
+// ===== 移动端侧栏 =====
+function initMobileSidebar() {
+  const hamburger = $('#hamburger');
+  const sidebar = $('#sidebar');
+  const overlay = $('#sidebarOverlay');
+
+  hamburger.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+    document.body.classList.toggle('sidebar-open');
+  });
+
+  overlay.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
+  });
+
+  // 点击文章后自动关侧栏
+  $('#articleList').addEventListener('click', (e) => {
+    if (e.target.closest('li[data-id]') && sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+      document.body.classList.remove('sidebar-open');
+    }
+  });
+
+  // 新建文章自动关侧栏
+  const origStartNew = startNew;
+  // Don't override, just add behavior after original
+}
+
 // ===== 启动 =====
 init();
+initMobileSidebar();
