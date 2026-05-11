@@ -61,18 +61,15 @@ router.post('/generate', async (req, res) => {
 【风格】：${styleText}
 【字数】：${wordText}${searchContext}${searchHint}
 
-输出格式（务必严格遵守！）：
+输出格式：
 
 # 文章标题
 
 正文内容（Markdown 格式，用 ## 做小标题）
 
-<!-- TAGS: ["标签1","标签2"] -->
+[TAGS] 标签1, 标签2
 
-最后一行必须输出标签！标签必须是 JSON 数组格式放在 HTML 注释中，2-3 个中文标签。
-正确示例：<!-- TAGS: ["人工智能","深度学习","神经网络"] -->
-错误示例：标签：人工智能、深度学习
-绝对不要在文章末尾忘记标签行！`;
+文章最后必须有一行 [TAGS] 标签行，写 2-3 个中文标签，用逗号分隔。`;
 
     const response = await fetch(`${DEEPSEEK_BASE}/v1/chat/completions`, {
       method: 'POST',
@@ -83,7 +80,7 @@ router.post('/generate', async (req, res) => {
       body: JSON.stringify({
         model: 'deepseek-v4-pro',
         messages: [
-          { role: 'system', content: '你是专业博客作者。如果有搜索素材，必须基于素材中的真实信息写文章。文章末尾必须输出标签行 <!-- TAGS: ["标签"] -->，不可遗漏。' },
+          { role: 'system', content: '你是专业博客作者。如果有搜索素材，必须基于素材中的真实信息写文章。文章末尾必须输出 [TAGS] 标签1, 标签2 格式的标签行，不可遗漏。' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.8,
@@ -109,19 +106,24 @@ router.post('/generate', async (req, res) => {
 
     // 解析 tags
     let tags = [];
-    // 格式1: <!-- TAGS: ["a","b"] --> 或 <!-- TAG: ["a","b"] -->
-    let m = content.match(/<!--\s*TAGS?\s*:\s*\[([^\]]*)\]\s*-->/i);
+    // 格式1: [TAGS] 标签1, 标签2  (新格式)
+    let m = content.match(/\[TAGS?\]\s*(.+)$/im);
     if (m) {
-      try {
-        // 尝试 JSON 解析
-        tags = JSON.parse(`[${m[1]}]`);
-      } catch (e) {
-        // JSON 解析失败，手动分割
-        tags = m[1].split(/[,，]/).map(t => t.replace(/["'\s]/g, '')).filter(Boolean);
-      }
+      tags = m[1].split(/[,，、\s]+/).map(t => t.replace(/^#/, '').trim()).filter(t => t.length > 0 && t.length < 20);
       content = content.replace(m[0], '').trim();
-    } else {
-      // 格式2: 文末 #标签1 #标签2
+    }
+    // 格式2: <!-- TAGS: ["a","b"] --> (兼容旧格式)
+    if (!tags.length) {
+      m = content.match(/<!--\s*TAGS?\s*:\s*\[([^\]]*)\]\s*-->/i);
+      if (m) {
+        try { tags = JSON.parse(`[${m[1]}]`); } catch (e) {
+          tags = m[1].split(/[,，]/).map(t => t.replace(/["'\s]/g, '')).filter(Boolean);
+        }
+        content = content.replace(m[0], '').trim();
+      }
+    }
+    // 格式3: 文末 #标签1 #标签2
+    if (!tags.length) {
       const lastLines = content.split('\n').slice(-4).join('\n');
       const hashTags = lastLines.match(/#([^\s#]+)/g);
       if (hashTags) {
