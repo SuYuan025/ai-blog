@@ -38,6 +38,10 @@ const dom = {
   btnAiEdit: $('#btnAiEdit'),
   btnNew: $('#btnNew'),
   btnStart: $('#btnStart'),
+  publishDialogOverlay: $('#publishDialogOverlay'),
+  publishCategory: $('#publishCategory'),
+  publishCancel: $('#publishCancel'),
+  publishConfirm: $('#publishConfirm'),
   btnGenerate: $('#btnGenerate'),
   btnDelete: $('#btnDelete'),
   btnSave: $('#btnSave'),
@@ -476,8 +480,45 @@ function updatePublishButton(article) {
   }
 }
 
+// ===== 发布流程（含分类选择）=====
+let categoriesCache = [];
+
+async function loadCategories() {
+  try {
+    const res = await fetch('/api/articles/categories');
+    categoriesCache = await res.json();
+    const sel = dom.publishCategory;
+    sel.innerHTML = '<option value="">无分类</option>' +
+      categoriesCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  } catch (e) {
+    categoriesCache = [];
+  }
+}
+
+function showPublishDialog() {
+  loadCategories();
+  dom.publishDialogOverlay.style.display = 'flex';
+}
+
+function hidePublishDialog() {
+  dom.publishDialogOverlay.style.display = 'none';
+}
+
 async function publishArticle() {
   if (!state.currentArticle?.id) return;
+
+  // 如果已经发布过，直接更新（跳过分类选择）
+  if (state.currentArticle.grtblog_id) {
+    await doPublish(null);
+    return;
+  }
+
+  // 首次发布，弹出分类选择
+  showPublishDialog();
+}
+
+async function doPublish(categoryId) {
+  hidePublishDialog();
   const btn = dom.btnPublish;
   const label = btn.querySelector('.publish-label');
   const svg = btn.querySelector('.publish-svg');
@@ -486,7 +527,12 @@ async function publishArticle() {
   if (svg) svg.style.display = 'none';
 
   try {
-    const res = await fetch(`/api/articles/${state.currentArticle.id}/publish`, { method: 'POST' });
+    const body = categoryId ? JSON.stringify({ categoryId }) : undefined;
+    const res = await fetch(`/api/articles/${state.currentArticle.id}/publish`, {
+      method: 'POST',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body,
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '发布失败');
 
@@ -591,6 +637,15 @@ function setupEventListeners() {
   dom.btnDelete.addEventListener('click', deleteArticle);
   dom.btnSave.addEventListener('click', saveArticle);
   dom.btnPublish.addEventListener('click', publishArticle);
+  dom.publishCancel.addEventListener('click', hidePublishDialog);
+  dom.publishConfirm.addEventListener('click', () => {
+    const catId = dom.publishCategory.value;
+    doPublish(catId || null);
+  });
+  dom.publishDialogOverlay.addEventListener('click', (e) => {
+    if (e.target === dom.publishDialogOverlay) hidePublishDialog();
+  });
+
   dom.btnApply.addEventListener('click', applyAiEdit);
   dom.btnCancel.addEventListener('click', cancelAiEdit);
   dom.btnTheme.addEventListener('click', toggleTheme);

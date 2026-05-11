@@ -23,6 +23,24 @@ router.get('/tags', async (req, res) => {
   }
 });
 
+// 获取 grtblog 分类列表
+router.get('/categories', async (req, res) => {
+  try {
+    const apiUrl = process.env.GRTBLOG_API_URL || 'http://grtblog-server:8080/api/v2';
+    const token = process.env.GRTBLOG_TOKEN;
+    if (!token) return res.json([]);
+
+    const resp = await fetch(`${apiUrl}/categories`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!resp.ok) return res.json([]);
+    const data = await resp.json();
+    res.json(data.data || []);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 // 获取单篇文章
 router.get('/:id', async (req, res) => {
   try {
@@ -84,6 +102,12 @@ router.post('/:id/publish', async (req, res) => {
       isPublished: true,
       isOriginal: true,
     };
+
+    // 支持传入分类 ID
+    const categoryId = req.body.categoryId;
+    if (categoryId) {
+      body.categoryId = parseInt(categoryId, 10);
+    }
 
     const headers = {
       'Content-Type': 'application/json',

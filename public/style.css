@@ -656,6 +656,51 @@ body {
 @keyframes fadeIn { from { opacity: 0; } }
 @keyframes expandIn { from { opacity: 0; transform: scaleX(0.9); } }
 
+/* ===== Publish Dialog ===== */
+.publish-dialog-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+.publish-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 360px; max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  animation: slideUp 0.25s ease-out;
+}
+.publish-dialog-title {
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+}
+.publish-dialog-field { margin-bottom: 18px; }
+.publish-dialog-field label {
+  display: block; font-size: 12px;
+  color: var(--text-muted); margin-bottom: 6px;
+  font-weight: 500;
+}
+.publish-dialog-field select {
+  width: 100%; padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 14px; font-family: var(--font-body);
+  outline: none; cursor: pointer;
+  transition: border-color var(--transition);
+}
+.publish-dialog-field select:focus { border-color: var(--accent); }
+.publish-dialog-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+
+[data-theme="light"] .publish-dialog-overlay { background: rgba(0,0,0,0.3); }
+
 /* ===== Toast ===== */
 .toast {
   position: fixed; bottom: 28px; left: 50%;

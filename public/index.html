@@ -149,6 +149,23 @@
   </button>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+  <!-- 发布分类选择弹窗 -->
+  <div class="publish-dialog-overlay" id="publishDialogOverlay" style="display:none">
+    <div class="publish-dialog" id="publishDialog">
+      <div class="publish-dialog-title">发布到主站</div>
+      <div class="publish-dialog-field">
+        <label for="publishCategory">分类</label>
+        <select id="publishCategory">
+          <option value="">无分类</option>
+        </select>
+      </div>
+      <div class="publish-dialog-actions">
+        <button class="btn-cancel" id="publishCancel">取消</button>
+        <button class="btn-apply" id="publishConfirm">确认发布</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
   <script src="app.js?v=5"></script>
 </body>
