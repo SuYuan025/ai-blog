@@ -309,6 +309,23 @@ async function generateArticle() {
       }
     }
 
+    // 处理 buffer 中剩余的最后一条 data
+    if (buffer.trim()) {
+      const lastLine = buffer.trim();
+      let lastEvent = '';
+      let lastData = lastLine;
+      if (lastLine.startsWith('event: ') && lastLine.includes('\ndata: ')) {
+        const parts = lastLine.split('\n');
+        lastEvent = parts[0].slice(7).trim();
+        lastData = parts[1].slice(6).trim();
+      } else if (lastLine.startsWith('data: ')) {
+        lastData = lastLine.slice(6);
+      }
+      if (lastData) {
+        handleSSE(lastEvent, JSON.parse(lastData));
+      }
+    }
+
     setGenerating(false);
   } catch (e) {
     clearTimeout(progressTimer);

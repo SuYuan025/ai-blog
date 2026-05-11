@@ -61,18 +61,18 @@ router.post('/generate', async (req, res) => {
 【风格】：${styleText}
 【字数】：${wordText}${searchContext}${searchHint}
 
-输出格式要求（严格遵守）：
+输出格式（务必严格遵守！）：
 
-第一行：文章标题（# 开头）
-空一行
-正文（Markdown，含 ## 小标题分段）
-空一行
-标签行：<!-- TAGS: ["标签1","标签2"] -->
+# 文章标题
 
-标签必须是 JSON 数组，放在 HTML 注释中，标签用中文，2-3 个。例如：
-<!-- TAGS: ["人工智能","深度学习"] -->
+正文内容（Markdown 格式，用 ## 做小标题）
 
-务必输出标签行，这是强制要求的。`;
+<!-- TAGS: ["标签1","标签2"] -->
+
+最后一行必须输出标签！标签必须是 JSON 数组格式放在 HTML 注释中，2-3 个中文标签。
+正确示例：<!-- TAGS: ["人工智能","深度学习","神经网络"] -->
+错误示例：标签：人工智能、深度学习
+绝对不要在文章末尾忘记标签行！`;
 
     const response = await fetch(`${DEEPSEEK_BASE}/v1/chat/completions`, {
       method: 'POST',
