@@ -11,7 +11,8 @@ async function searchSerper(query) {
     body: JSON.stringify({ q: query, gl: 'cn', hl: 'zh-cn', num: 6 }),
   });
   const data = await resp.json();
-  return (data.organic || []).map(r => `${r.title}\n${r.snippet}`).join('\n\n');
+  console.log('[Serper] 搜索完成，返回结果数:', (data.organic || []).length);
+  return (data.organic || []).map(r => `${r.title}\n${r.snippet}\n来源: ${r.link}`).join('\n\n');
 }
 
 // 生成完整文章（SSE 流式）
@@ -30,6 +31,8 @@ router.post('/generate', async (req, res) => {
   try {
     const wordMap = { short: '800-1200字', medium: '1500-2500字', long: '3000-5000字' };
     const styleMap = { formal: '正式严谨', casual: '轻松易读', tech: '技术深度' };
+    const styleText = styleMap[style] || style || '轻松易读';
+    const wordText = wordMap[wordCount] || (/^\d+$/.test(wordCount) ? `约${wordCount}字` : (wordCount || '1000-1500字'));
 
     let searchContext = '';
     if (webSearch && process.env.SERPER_API_KEY && process.env.SERPER_API_KEY !== '你的serper密钥') {
@@ -41,28 +44,35 @@ router.post('/generate', async (req, res) => {
             '\n\n请根据以上搜索到的真实信息来写文章，如果信息不足或过时，可以结合你的知识补充。';
           send('progress', { stage: 'writing', message: '已获取最新信息，开始撰写…', pct: 15 });
         }
-      } catch (e) { /* 搜索失败降级 */ }
+      } catch (e) { console.warn('[Serper] 搜索失败:', e.message); }
+    } else {
+      console.log('[Serper] 跳过搜索: webSearch=', webSearch, ', key有效=', !!process.env.SERPER_API_KEY && process.env.SERPER_API_KEY !== '你的serper密钥');
     }
 
     send('progress', { stage: 'writing', message: 'AI 正在撰写文章…', pct: 20 });
 
-    const prompt = `你是一位专业的博客作者。用户给了你一句话作为主题，请完成以下任务：
+    const searchHint = searchContext
+      ? '\n【重要】你必须以上面的联网搜索素材为主要信息来源来写这篇文章。优先引用素材中的真实数据、事件和观点。如果素材不足，再用你的知识补充。'
+      : '\n请基于你最新的知识来写，确保内容准确、有深度。';
 
-【用户的话】：${topic}
-【风格要求】：${styleMap[style] || '轻松易读'}
-【字数要求】：${wordMap[wordCount] || '1000-1500字'}${searchContext}
+    const prompt = `你是一位专业的博客作者。请根据用户提供的主题写一篇博客文章。
 
-请按以下格式输出：
+【主题】：${topic}
+【风格】：${styleText}
+【字数】：${wordText}${searchContext}${searchHint}
 
-1. 第一行写一个合适的文章标题（用 # 开头，如：# 这是标题）
-2. 空一行
-3. 正文内容（Markdown 格式），结构包含：
-   - 一个吸引人的开头
-   - 2-3 个小标题分段（用 ## 标记）
-   - 技术类文章放代码示例
-   - 一个总结段落
-4. 文章最后输出标签，严格按这个格式（不要省略，不要改格式，否则程序解析失败）：
-<!-- TAGS: ["标签1","标签2","标签3"] -->`;
+输出格式要求（严格遵守）：
+
+第一行：文章标题（# 开头）
+空一行
+正文（Markdown，含 ## 小标题分段）
+空一行
+标签行：<!-- TAGS: ["标签1","标签2"] -->
+
+标签必须是 JSON 数组，放在 HTML 注释中，标签用中文，2-3 个。例如：
+<!-- TAGS: ["人工智能","深度学习"] -->
+
+务必输出标签行，这是强制要求的。`;
 
     const response = await fetch(`${DEEPSEEK_BASE}/v1/chat/completions`, {
       method: 'POST',
@@ -73,7 +83,7 @@ router.post('/generate', async (req, res) => {
       body: JSON.stringify({
         model: 'deepseek-v4-pro',
         messages: [
-          { role: 'system', content: '你是一个专业博客作者，文章素材充分。写完后严格按格式输出标签。' },
+          { role: 'system', content: '你是专业博客作者。如果有搜索素材，必须基于素材中的真实信息写文章。文章末尾必须输出标签行 <!-- TAGS: ["标签"] -->，不可遗漏。' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.8,
@@ -97,20 +107,28 @@ router.post('/generate', async (req, res) => {
     const title = titleMatch ? titleMatch[1].trim() : topic;
     let content = titleMatch ? fullText.replace(/^# .+\n?\n?/, '') : fullText;
 
-    // 解析 tags（支持多种格式）
+    // 解析 tags
     let tags = [];
-    // 格式1: <!-- TAGS: ["a","b"] -->
-    let m = content.match(/<!--\s*TAGS?\s*:\s*(\[.*?\])\s*-->/i);
-    // 格式2: 最后一行「标签：a, b, c」或「#tag1 #tag2」
-    if (!m) {
-      const lastLines = content.split('\n').slice(-3).join('\n');
-      const hashTags = lastLines.match(/#(\S+)/g);
-      if (hashTags) { tags = hashTags.map(t => t.replace('#', '')); }
-    }
+    // 格式1: <!-- TAGS: ["a","b"] --> 或 <!-- TAG: ["a","b"] -->
+    let m = content.match(/<!--\s*TAGS?\s*:\s*\[([^\]]*)\]\s*-->/i);
     if (m) {
-      try { tags = JSON.parse(m[1]); } catch (e) { /* ignore */ }
+      try {
+        // 尝试 JSON 解析
+        tags = JSON.parse(`[${m[1]}]`);
+      } catch (e) {
+        // JSON 解析失败，手动分割
+        tags = m[1].split(/[,，]/).map(t => t.replace(/["'\s]/g, '')).filter(Boolean);
+      }
       content = content.replace(m[0], '').trim();
+    } else {
+      // 格式2: 文末 #标签1 #标签2
+      const lastLines = content.split('\n').slice(-4).join('\n');
+      const hashTags = lastLines.match(/#([^\s#]+)/g);
+      if (hashTags) {
+        tags = hashTags.map(t => t.replace(/^#/, '')).filter(t => t.length < 20 && !/^\d+$/.test(t));
+      }
     }
+    console.log('[Tags] 解析结果:', tags);
 
     send('done', { title, content, tags: tags || [], style, wordCount });
     res.end();

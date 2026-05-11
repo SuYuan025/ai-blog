@@ -49,16 +49,22 @@
           placeholder="你想写什么主题？说一句话就行…" autofocus></textarea>
 
         <div class="generate-bottombar">
+          <span class="bar-label">风格</span>
           <div class="select-group" id="styleGroup">
             <button class="chip" data-value="casual">轻松</button>
             <button class="chip" data-value="formal">正式</button>
             <button class="chip active" data-value="tech">技术</button>
+            <button class="chip chip-custom" id="chipCustom" title="自定义风格">+</button>
+          </div>
+          <div class="custom-style-input" id="customStyleWrap" style="display:none">
+            <input type="text" class="inline-input" id="customStyleInput" placeholder="比如：鲁迅风格、小红书体…" maxlength="30">
+            <button class="inline-confirm" id="inlineConfirm">确定</button>
           </div>
           <span class="bar-sep"></span>
-          <div class="select-group" id="wordGroup">
-            <button class="chip" data-value="short">短</button>
-            <button class="chip active" data-value="medium">中</button>
-            <button class="chip" data-value="long">长</button>
+          <span class="bar-label">字数</span>
+          <div class="word-input-wrap">
+            <input type="number" class="inline-input word-input" id="wordInput" value="1500" min="100" max="20000" step="100">
+            <span class="word-suffix">字</span>
           </div>
           <span class="bar-spacer"></span>
           <label class="search-toggle">
@@ -85,7 +91,10 @@
         <input type="text" class="editor-title-input" id="editorTitle" placeholder="文章标题…">
         <div class="editor-actions">
           <button class="btn-save" id="btnSave">保存</button>
-          <button class="btn-publish" id="btnPublish">发布</button>
+          <button class="btn-publish" id="btnPublish">
+            <svg class="publish-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            <span class="publish-label">发布</span>
+          </button>
           <button class="btn-ai-edit" id="btnAiEdit" disabled>AI 修改</button>
           <button class="btn-delete" id="btnDelete">删除</button>
         </div>

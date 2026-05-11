@@ -18,6 +18,11 @@ const dom = {
   searchInput: $('#searchInput'),
   inputTopic: $('#inputTopic'),
   webSearchToggle: $('#webSearchToggle'),
+  chipCustom: $('#chipCustom'),
+  customStyleWrap: $('#customStyleWrap'),
+  customStyleInput: $('#customStyleInput'),
+  wordInput: $('#wordInput'),
+  inlineConfirm: $('#inlineConfirm'),
   editorTitle: $('#editorTitle'),
   editorTextarea: $('#editorTextarea'),
   previewContent: $('#previewContent'),
@@ -249,8 +254,8 @@ async function generateArticle() {
   const topic = dom.inputTopic.value.trim();
   if (!topic) { toast('请输入文章主题'); return; }
 
-  const style = getActiveChip('styleGroup');
-  const wordCount = getActiveChip('wordGroup');
+  const style = getStyle();
+  const wordCount = getWordCount();
   const webSearch = dom.webSearchToggle.checked;
 
   dom.generateError.style.display = 'none';
@@ -318,10 +323,15 @@ function setGenerating(active) {
   dom.btnGenerate.disabled = active;
   dom.btnGenerate.innerHTML = active ? '<span class="btn-spinner"></span> 生成中…' : '&#10045; 生成';
   dom.inputTopic.disabled = active;
-  document.querySelectorAll('.select-group .chip').forEach(c => {
+  document.querySelectorAll('#styleGroup .chip').forEach(c => {
     c.style.pointerEvents = active ? 'none' : '';
     c.style.opacity = active ? '0.5' : '';
   });
+  dom.customStyleInput.disabled = active;
+  dom.customStyleInput.style.opacity = active ? '0.5' : '';
+  dom.inlineConfirm.disabled = active;
+  dom.wordInput.disabled = active;
+  dom.wordInput.style.opacity = active ? '0.5' : '';
 }
 
 function handleSSE(type, data) {
@@ -376,17 +386,27 @@ async function saveGeneratedArticle(data) {
   }
 }
 
-function getActiveChip(groupId) {
-  const active = document.querySelector(`#${groupId} .chip.active`);
-  return active ? active.dataset.value : 'medium';
+function getStyle() {
+  const customVal = dom.customStyleInput.value.trim();
+  if (customVal) return customVal;
+  const active = document.querySelector('#styleGroup .chip:not(.chip-custom).active');
+  return active ? active.dataset.value : 'tech';
+}
+
+function getWordCount() {
+  const val = dom.wordInput.value.trim();
+  return val || '1500';
 }
 
 function resetChipGroups() {
-  ['styleGroup', 'wordGroup'].forEach(id => {
-    const chips = document.querySelectorAll(`#${id} .chip`);
-    chips.forEach(c => c.classList.remove('active'));
-    chips[1]?.classList.add('active');
-  });
+  document.querySelectorAll('#styleGroup .chip').forEach(c => c.classList.remove('active'));
+  // Default to "tech"
+  const techChip = document.querySelector('#styleGroup .chip[data-value="tech"]');
+  if (techChip) techChip.classList.add('active');
+  dom.chipCustom.classList.remove('active');
+  dom.customStyleWrap.style.display = 'none';
+  dom.customStyleInput.value = '';
+  dom.wordInput.value = '1500';
 }
 
 // ===== 编辑功能 =====
@@ -422,22 +442,29 @@ async function saveArticle() {
 
 // ===== 发布文章到 grtblog =====
 function updatePublishButton(article) {
+  const svg = dom.btnPublish.querySelector('.publish-svg');
+  const label = dom.btnPublish.querySelector('.publish-label');
   if (article?.grtblog_id) {
-    dom.btnPublish.textContent = '已发布';
     dom.btnPublish.classList.add('published');
     dom.btnPublish.title = '点击更新发布';
+    if (svg) svg.outerHTML = '<svg class="publish-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    if (label) label.textContent = '已发布';
   } else {
-    dom.btnPublish.textContent = '发布';
     dom.btnPublish.classList.remove('published');
     dom.btnPublish.title = '发布到主站';
+    if (svg) svg.outerHTML = '<svg class="publish-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+    if (label) label.textContent = '发布';
   }
 }
 
 async function publishArticle() {
   if (!state.currentArticle?.id) return;
   const btn = dom.btnPublish;
-  btn.textContent = '发布中…';
+  const label = btn.querySelector('.publish-label');
+  const svg = btn.querySelector('.publish-svg');
   btn.disabled = true;
+  if (label) label.textContent = '发布中…';
+  if (svg) svg.style.display = 'none';
 
   try {
     const res = await fetch(`/api/articles/${state.currentArticle.id}/publish`, { method: 'POST' });
@@ -447,12 +474,13 @@ async function publishArticle() {
     state.currentArticle.grtblog_id = data.grtblogId;
     updatePublishButton(state.currentArticle);
     await loadArticles();
-    toast(data.url ? `已发布: ${data.url}` : '已发布');
+    toast('已发布到主站');
   } catch (e) {
     toast(e.message, true);
     updatePublishButton(state.currentArticle);
   } finally {
     btn.disabled = false;
+    if (svg) svg.style.display = '';
   }
 }
 
@@ -552,13 +580,54 @@ function setupEventListeners() {
     btn.addEventListener('click', () => aiEdit(btn.dataset.action));
   });
 
-  document.querySelectorAll('.select-group').forEach(group => {
-    group.addEventListener('click', (e) => {
-      if (e.target.classList.contains('chip')) {
-        group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        e.target.classList.add('active');
+  // Style chips — handle regular clicks and custom expander
+  $('#styleGroup').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    if (chip === dom.chipCustom) {
+      // Toggle custom input
+      const isOpen = dom.customStyleWrap.style.display !== 'none';
+      if (isOpen) {
+        dom.customStyleWrap.style.display = 'none';
+        dom.customStyleInput.value = '';
+        dom.chipCustom.classList.remove('active');
+        dom.customStyleWrap.classList.remove('active');
+      } else {
+        dom.customStyleWrap.style.display = 'flex';
+        dom.chipCustom.classList.add('active');
+        dom.customStyleWrap.classList.add('active');
+        document.querySelectorAll('#styleGroup .chip:not(.chip-custom)').forEach(c => c.classList.remove('active'));
+        setTimeout(() => dom.customStyleInput.focus(), 50);
       }
-    });
+    } else {
+      // Regular style chip
+      document.querySelectorAll('#styleGroup .chip').forEach(c => c.classList.remove('active'));
+      dom.customStyleWrap.style.display = 'none';
+      dom.customStyleInput.value = '';
+      chip.classList.add('active');
+    }
+  });
+
+  // Confirm custom style
+  dom.inlineConfirm.addEventListener('click', () => {
+    const val = dom.customStyleInput.value.trim();
+    if (val) {
+      dom.customStyleWrap.style.display = 'none';
+    } else {
+      dom.customStyleWrap.style.display = 'none';
+      const tech = document.querySelector('#styleGroup .chip[data-value="tech"]');
+      if (tech) tech.classList.add('active');
+    }
+  });
+
+  dom.customStyleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') dom.inlineConfirm.click();
+    if (e.key === 'Escape') {
+      dom.customStyleWrap.style.display = 'none';
+      dom.customStyleInput.value = '';
+      const tech = document.querySelector('#styleGroup .chip[data-value="tech"]');
+      if (tech) tech.classList.add('active');
+    }
   });
 
   dom.editorTextarea.addEventListener('input', updatePreview);

@@ -12,7 +12,10 @@
       "Bash(curl -s http://localhost:3000)",
       "Bash(curl *)",
       "Read(//e/vscode/code/学习/**)",
-      "Read(//e/vscode/code/**)"
+      "Read(//e/vscode/code/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
