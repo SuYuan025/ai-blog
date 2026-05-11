@@ -1,4 +1,5 @@
 // ===== 笔尖 — 前端逻辑 =====
+console.log('[笔尖] app.js v3 loaded');
 
 const state = {
   articles: [],
@@ -174,6 +175,7 @@ async function loadArticles() {
 }
 
 function renderArticleList() {
+  console.log('[笔尖] renderArticleList, articles:', state.articles.length);
   if (state.articles.length === 0) {
     dom.articleList.innerHTML = '<li class="article-empty">暂无文章</li>';
     return;
@@ -359,6 +361,7 @@ function handleSSE(type, data) {
       // 保证进度不倒退
       break;
     case 'done':
+      console.log('[笔尖] SSE done received, tags:', data.tags);
       clearTimeout(progressTimer);
       setProgress(100, '完成！');
       setTimeout(() => {
@@ -384,12 +387,14 @@ function setProgress(pct, message) {
 
 async function saveGeneratedArticle(data) {
   try {
+    console.log('[笔尖] Saving article, tags:', data.tags);
     const saveRes = await fetch('/api/articles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     const saved = await saveRes.json();
+    console.log('[笔尖] Article saved, tags:', saved.tags);
 
     state.currentArticle = saved;
     dom.editorTitle.value = saved.title;
