@@ -49,29 +49,44 @@
           placeholder="你想写什么主题？说一句话就行…" autofocus></textarea>
 
         <div class="generate-bottombar">
-          <span class="bar-label">风格</span>
-          <div class="select-group" id="styleGroup">
+          <!-- 风格 -->
+          <div class="tb-group style-group" id="styleGroup">
             <button class="chip" data-value="casual">轻松</button>
             <button class="chip" data-value="formal">正式</button>
             <button class="chip active" data-value="tech">技术</button>
-            <button class="chip chip-custom" id="chipCustom" title="自定义风格">+</button>
+            <button class="chip chip-more" id="chipCustom" title="自定义风格">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+            </button>
+            <div class="style-custom" id="customStyleWrap" style="display:none">
+              <input type="text" id="customStyleInput" placeholder="自定义风格…" maxlength="30" autocomplete="off">
+              <button class="btn-inline-ok" id="inlineConfirm">确定</button>
+            </div>
           </div>
-          <div class="custom-style-input" id="customStyleWrap" style="display:none">
-            <input type="text" class="inline-input" id="customStyleInput" placeholder="比如：鲁迅风格、小红书体…" maxlength="30">
-            <button class="inline-confirm" id="inlineConfirm">确定</button>
+
+          <span class="tb-divider"></span>
+
+          <!-- 字数 -->
+          <div class="tb-group word-group">
+            <input type="number" class="word-input" id="wordInput" value="1500" min="100" max="20000" step="100">
+            <span class="word-unit">字</span>
           </div>
-          <span class="bar-sep"></span>
-          <span class="bar-label">字数</span>
-          <div class="word-input-wrap">
-            <input type="number" class="inline-input word-input" id="wordInput" value="1500" min="100" max="20000" step="100">
-            <span class="word-suffix">字</span>
-          </div>
-          <span class="bar-spacer"></span>
-          <label class="search-toggle">
+
+          <span class="tb-spacer"></span>
+
+          <!-- 联网搜索 -->
+          <label class="tb-toggle" id="netToggle">
             <input type="checkbox" id="webSearchToggle" checked>
-            <span class="search-toggle-pill">联网</span>
+            <span class="tb-toggle-track">
+              <span class="tb-toggle-knob"></span>
+            </span>
+            <span class="tb-toggle-label">联网搜索</span>
           </label>
-          <button class="btn-primary btn-generate" id="btnGenerate">&#10045; 生成</button>
+
+          <!-- 生成按钮 -->
+          <button class="btn-generate" id="btnGenerate">
+            <svg class="gen-star" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6.4-4.8-6.4 4.8 2.4-7.2-6-4.8h7.6z"/></svg>
+            <span>生成文章</span>
+          </button>
         </div>
 
         <div class="progress-area" id="progressArea" style="display:none">
