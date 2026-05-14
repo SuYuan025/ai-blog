@@ -625,6 +625,10 @@ body {
 }
 .preview-content a { color: var(--accent); }
 .preview-content hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+.preview-content .ai-disclaimer {
+  font-size: 12px; color: var(--text-muted);
+  font-style: italic; opacity: 0.7;
+}
 
 /* AI edit bar */
 .ai-edit-bar {

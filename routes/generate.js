@@ -132,6 +132,9 @@ router.post('/generate', async (req, res) => {
     }
     console.log('[Tags] 解析结果:', tags);
 
+    // 追加 AI 生成声明
+    content += '\n\n---\n<div class="ai-disclaimer">本文由 AI 辅助生成，仅供参考</div>';
+
     send('done', { title, content, tags: tags || [], style, wordCount });
     res.end();
   } catch (e) {
