@@ -133,7 +133,7 @@ router.post('/generate', async (req, res) => {
     console.log('[Tags] 解析结果:', tags);
 
     // 追加 AI 生成声明
-    content += '\n\n---\n<div class="ai-disclaimer">本文由 AI 辅助生成，仅供参考</div>';
+    content += '\n\n---\n<div class="ai-disclaimer">本文由 AI 生成，仅供参考。如有不准确或侵权内容，请在评论区留言，我们将及时处理。</div>';
 
     send('done', { title, content, tags: tags || [], style, wordCount });
     res.end();
